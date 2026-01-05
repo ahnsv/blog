@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}My Blog{% endblock %}
+
+{% block content %}
+<ul class="post-list">
+    {% for post in posts %}
+    <li class="post-item">
+        <span class="date">{{ post.date }}</span>
+        <a href="/blog/{{ post.slug }}">{{ post.title }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}
