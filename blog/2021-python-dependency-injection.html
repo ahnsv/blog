@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Python Application Dependency Injection - dependency injector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-divider {
+            width: 1px;
+            height: 20px;
+            background-color: #ccc;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1><a href="/" class="nav-link">Humphrey's Humblog</a></h1>
+        <nav>
+            <a href="/" class="nav-link">Blog</a>
+            <div class="nav-divider"></div>
+            <a href="https://ahnsv.github.io" target="_blank" class="nav-link">About</a>
+        </nav>
+    </header>
+
+    <main>
+        
+<article class="post">
+    <header style="margin-bottom: 2rem;" class="post-header">
+        <h1>Python Application Dependency Injection - dependency injector</h1>
+        <div class="date">2021-08-16</div>
+    </header>
+
+    <div class="post-content">
+        <aside>
+💡 Creating low-coupling, high-cohesion code in Python applications with Dependency Injector
+
+</aside>
+
+<h2>Background</h2>
+<p>I've been thinking a lot about application design lately. Among these concerns, the problem of <strong>dependencies</strong> is not limited to specific languages, frameworks, or object-oriented programming alone.</p>
+<p><a href="https://youtu.be/dJ5C4qRqAgA?t=82">[Elegant Tech Seminar] 190620 Elegant Object-Oriented by Jo Young-ho, Development Director at Woowa Brothers</a></p>
+<p>Jo Young-ho: "The core of design is dependencies"</p>
+<p>These days, Python is my main language, but unlike object-oriented languages, traditional Python has lacked discussion about dependency injection (most discussions are about pip package dependencies...). Some say that due to Python's flexible and non-compiled language characteristics, Python developers don't need dependency injection frameworks, but I think effective internal dependency management in applications is necessary for projects developed by multiple people, maintaining maintainable and testable code, and creating "mature" code. </p>
+<p><a href="https://stackoverflow.com/a/2465052">Why is IoC / DI not common in Python?</a></p>
+<p>Related Stack Overflow question/answer</p>
+<p>While pondering <strong>"Isn't there an elegant way to manage dependencies in Python?"</strong>, I discovered a library called <a href="https://python-dependency-injector.ets-labs.org/"><strong>dependency-injector</strong></a>. Thanks to this, I was able to focus more on designing roles, responsibilities, and collaboration relationships at the code level rather than worrying about where and how (<strong>HOW</strong>) to inject dependencies.</p>
+<p>I plan to review the essential concepts, how other frameworks or libraries solve dependency problems, and organize the roles and functions that dependency-injector provides. </p>
+<hr />
+<p>In this block, I want to review concepts related to dependencies (mainly dealt with in object-oriented design) and discuss why dependency injection is necessary. If you already know this content well and want to learn about library usage, you can skip directly to the <a href="https://www.notion.so/dependency-injector-89d14f1aee5642ec9eada5add0ddec38?pvs=21">DI in Other Frameworks</a> or <a href="https://www.notion.so/dependency-injector-89d14f1aee5642ec9eada5add0ddec38?pvs=21">Dependency Injector</a> sections.</p>
+<h2>What is Dependency?</h2>
+<blockquote>
+<p>Dependency between two components is a measure of the probability that changes to one component could affect also the other</p>
+</blockquote>
+<p>Dependency between two components means the probability that changes to one component could affect the other component.</p>
+<p>Source: http://blog.rcard.in/programming/oop/software-engineering/2017/04/10/dependency-dot.html</p>
+<blockquote></blockquote>
+<p>As code becomes complex, collaborative relationships between various objects are inevitably created. To collaborate, you need to know that other objects exist and understand how other objects receive "messages." This knowledge of objects creates dependencies (referenced from Objects).</p>
+<p>For application design to become flexible, it should have minimal specific details about the execution context. This way, you can create code that makes it easy to add features, change logic, or write tests. </p>
+<blockquote>
+<p><strong>Implicit dependencies are bad</strong></p>
+</blockquote>
+<p>Implicit dependencies create the need to understand the internal implementation of code in detail to understand dependencies. This violates <a href="https://javacpro.tistory.com/31">encapsulation</a>. Therefore, explicitly exposing dependencies to objects lowers the barrier to maintenance for code readers.</p>
+<blockquote></blockquote>
+<h2>What is Dependency Injection?</h2>
+<blockquote>
+<p><strong>Dependency injection</strong> is a method of resolving dependencies by having an external independent object create an instance and then passing it, rather than the object that uses it.</p>
+</blockquote>
+<p>From Chapter 9 of Objects</p>
+<blockquote></blockquote>
+<p>Dependency injection is one of the methods to solve the dependency management problems mentioned above. Alternatives include the Service Locator pattern (the biggest disadvantage of the SL pattern is that it creates/hides dependencies implicitly) (<a href="https://martinfowler.com/articles/injection.html#UsingAServiceLocator">Martin Fowler: Using Service Locator</a>, <a href="https://stackoverflow.com/a/65606097">vs DI comparison</a>)</p>
+<h3>Why is Dependency Injection Necessary?</h3>
+<p>There are much better explanations and extensive materials, but the necessity of dependency injection that I feel is:</p>
+<ul>
+<li>Object creation is handled by another place (container), reducing coupling</li>
+<li>Low coupling makes changes easier and allows more focus on collaborative relationships with other objects</li>
+<li>Injecting Fake, Mocking objects makes testing easier</li>
+</ul>
+<h2>What is the Dependency Inversion Principle?</h2>
+<p>This is principle D among the SOLID principles of object orientation:</p>
+<blockquote>
+<p>First, high-level modules should not depend on low-level modules. Both high-level and low-level modules should depend on abstractions.
+Second, abstractions should not depend on details. Details should depend on abstractions.
+</p>
+</blockquote>
+<p><a href="https://ko.wikipedia.org/wiki/%EC%9D%98%EC%A1%B4%EA%B4%80%EA%B3%84_%EC%97%AD%EC%A0%84_%EC%9B%90%EC%B9%99"></a></p>
+<p>In short, it's an important principle of object-oriented design that for flexible and reusable design, you should depend on abstractions rather than detailed implementation details.</p>
+<p>Therefore, connecting this with the dependency injection above, objects depend on high-level layers (abstractions), and when the container that provides dependency injection injects detailed objects according to use cases, more flexible design becomes possible (this is how I understand it...)</p>
+<p>I'll cover the details again in the section on refactoring existing code at the bottom. </p>
+<h2>First Summary</h2>
+<ul>
+<li>As applications become more sophisticated, dependencies on other objects increase</li>
+<li>Dependency injection is a technique for effectively managing dependencies</li>
+<li>Dependency injection can create low-coupling, changeable and testable code</li>
+<li>Depending on high-level abstractions rather than low-level implementation details can create more flexible design</li>
+</ul>
+<hr />
+<h2>DI in Other Frameworks</h2>
+<h3>Django</h3>
+<pre class="codehilite"><code class="language-python"># settings.py
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL + '/1',
+    },
+    'local': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'snowflake',
+    }
+}
+</code></pre>
+
+<p>In Django, environment-specific dependencies are specified in dictionary format as key-value pairs, and dependencies are injected using Python's duck typing functionality.</p>
+<p>Pros</p>
+<ul>
+<li>Concise</li>
+</ul>
+<p>Cons</p>
+<ul>
+<li>Ugly (personal opinion)</li>
+<li>Poor scalability (you'd have to hide that code somewhere...)</li>
+</ul>
+<h3>Django Rest Framework</h3>
+<pre class="codehilite"><code class="language-python">class FooView(APIView):
+    # The &quot;injected&quot; dependencies:
+    permission_classes = (IsAuthenticated, )
+    throttle_classes = (ScopedRateThrottle, )
+    parser_classes = (parsers.FormParser, parsers.JSONParser, parsers.MultiPartParser)
+    renderer_classes = (renderers.JSONRenderer,)
+
+    def get(self, request, *args, **kwargs):
+        pass
+
+    def post(self, request, *args, **kwargs):
+        pass
+</code></pre>
+
+<p>DRF injects dependencies based on classes.</p>
+<p>Pros</p>
+<ul>
+<li>You can add functionality through class methods.</li>
+</ul>
+<p>Cons</p>
+<ul>
+<li>Strongly coupled to web server framework</li>
+</ul>
+<h3>Spring</h3>
+<p>Convenient annotation-based IoC and Dependency Injection is one of Spring's greatest advantages.</p>
+<p>Spring basically has a container called ApplicationContext. Spring's Bean is a (basically) singleton Java object managed by this ApplicationContext, which can be accessed and used by various components within the Spring context. (It's been so long since I used Spring that I'm not sure if I'm expressing this correctly...)</p>
+<ol>
+<li>
+<p>Constructor Injection</p>
+<p>```java
+@Configuration
+public class AppConfig {</p>
+<pre class="codehilite"><code>@Bean
+public Item item1() {
+    return new ItemImpl1();
+}
+
+@Bean
+public Store store() {
+    return new Store(item1());
+}
+</code></pre>
+
+<p>}
+```</p>
+<p>You can register and use dependencies in ApplicationContext with just one Bean annotation.</p>
+</li>
+<li>
+<p>Setter Injection</p>
+<p><code>java
+@Bean
+public Store store() {
+    Store store = new Store();
+    store.setItem(item1());
+    return store;
+}</code></p>
+</li>
+<li>
+<p>Field Injection</p>
+<p><code>java
+public class Store {
+    @Autowired // I remember this method is deprecated these days and changed to putting it in the constructor
+    private Item item; 
+}</code></p>
+</li>
+</ol>
+<p>~~I want to use Spring...~~</p>
+<p>Source: https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring</p>
+<hr />
+<h2>Dependency Injector</h2>
+<p><img alt="Untitled" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/8e8585cc-fa8f-4bd5-930b-7657318f353c/Untitled.png" /></p>
+<h3>Philosophy</h3>
+<p>Dependency Injector aims to convey the following values:</p>
+<p><a href="https://python-dependency-injector.ets-labs.org/introduction/di_in_python.html">Dependency injection and inversion of control in Python - Dependency Injector 4.35.2 documentation</a></p>
+<ul>
+<li>Flexibility: Allows adding and changing functionality by combining various components differently</li>
+<li>Testability: Makes it easy to inject mocking, making codebase and business logic testable</li>
+<li>Clarity and maintainability: Makes dependencies explicit (this aligns with "Explicit is better than implicit" (PEP 20 - The Zen of Python)). Therefore, it enables understanding and control of the overall application system in one place.</li>
+</ul>
+<h3>Why do I recommend this library?</h3>
+<p>There are actually many other Python libraries that implement Dependency Injection.</p>
+<p>The reasons I recommend Dependency Injector are:</p>
+<ol>
+<li>
+<p><strong>Sophisticated Testing</strong></p>
+<p>This is one of the things I personally consider most important when choosing a library. With Dependency Injector, I could clearly understand how to use it just by looking at the test code.</p>
+</li>
+<li>
+<p><strong>Production-level Usability</strong></p>
+<p>It's already being used in famous libraries (BentoML, etc.)</p>
+</li>
+<li>
+<p><strong>Framework Agnostic</strong></p>
+<p>It's not locked into specific frameworks and can be used in all applications that use Python(!)</p>
+</li>
+<li>
+<p><strong>Various Examples</strong></p>
+<p>From examples using famous frameworks like Flask, Django, FastAPI to CLI applications, microservices, clean architecture patterns, etc., examples are explained in detail enough to be used almost as-is.</p>
+<p>Reference: https://python-dependency-injector.ets-labs.org/examples/index.html</p>
+</li>
+<li>
+<p><strong>Python Typing Support</strong></p>
+<p>These days, Python typing seems to be mainstream like js-ts. </p>
+</li>
+</ol>
+<h3>Main Features</h3>
+<p><a href="https://python-dependency-injector.ets-labs.org/providers/index.html"><strong>Providers</strong></a></p>
+<p>Providers actually serve the role of gathering objects/dependencies. They create objects and inject dependencies into other providers.</p>
+<ol>
+<li>
+<p><strong>Configuration Provider</strong></p>
+<p>```python
+from dependency_injector import providers, containers</p>
+<p>class ApplicationContainer(containers.DeclarativeContainer): # Explained in container section below
+    config = providers.Configuration()</p>
+<p>...</p>
+<p>container = Container()
+container.config.from_dict(
+    {
+        'aws': {
+             'access_key_id': 'KEY',
+             'secret_access_key': 'SECRET',
+         },
+    },
+)
+assert container.config.aws.acces_key_id == "KEY"
+assert container.config.aws.secret_access_key == "SECRET"
+```</p>
+<p>Configuration providers are declared in containers and data is injected in the usage part.</p>
+<ol>
+<li>ini files</li>
+<li>yaml files</li>
+<li>Pydantic Settings classes</li>
+<li>dictionary</li>
+<li>environment variables</li>
+</ol>
+<p>Configuration-related information is retrieved from various sources and injected into providers. </p>
+<p>Personally, I find the Pydantic Settings class method more attractive for writing validation logic than other methods, so I use it frequently. Using this enables the following validation:</p>
+<p>```python
+from pydantic import BaseSettings, Field, validator
+from dependency_injector import containers, providers</p>
+<p>class ApplicationEnvironment(str, Enum):
+    LOCAL = "local"
+    DEV = "dev"
+    PROD = "prod"
+    TEST = "test"</p>
+<p>class DatabaseSettings(BaseSettings):
+    db_host: str = Field(default="localhost", env="DATABASE_HOST")
+    db_port:  = Field(default=3306, env="DATABASE_PORT")
+    ...</p>
+<p>class ApplicationSettings(BaseSettings): 
+    env: ApplicationEnvironment = Field(default="local", env="ENV")
+    db: DatabaseSettings = DatabaseSettings()</p>
+<pre class="codehilite"><code>@validator('some_field')
+def validate_some_field(v, values): 
+    if v == values.get('some_other_field'): 
+        raise ValueError('Values cannot be the same')
+    return v
+</code></pre>
+
+<p>class ApplicationContainer(containers.DeclarativeContainer):
+    config = providers.Configuration()
+    ...
+```</p>
+<p>This can reduce human errors in environment variable and config management and isolate them from application logic.</p>
+<p>(I found this alone very attractive...)</p>
+</li>
+<li>
+<p><strong>Factory Provider</strong></p>
+<p>Factory providers are providers that create objects. </p>
+<p>```python
+from dependency_injector import containers, providers</p>
+<p>class User:
+    ...</p>
+<p>class DetailedUser:
+    def <strong>init</strong>(self, name: str) -&gt; None:
+        self.name = name</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>user_factory = providers.Factory(User)
+    detailed_user_factory = providers.Factory(User, name=&quot;humphrey&quot;)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()</p>
+<pre class="codehilite"><code>user1 = container.user_factory()
+user2 = container.user_factory()
+
+    humphrey_user = container.detailed_user_factory()
+
+    assert humphrey_user.name == &quot;humphrey&quot; # True
+</code></pre>
+
+<p>```</p>
+<p>The first argument of <code>providers.Factory</code> is the object to create, and the subsequent arguments can inject constructor arguments.</p>
+<p>You can use it simply as above, or you can chain factory providers.</p>
+<p><img alt="Untitled" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/007c889b-2ba7-4c24-ac4d-72dc310010fd/Untitled.png" /></p>
+<p>```python
+from dependency_injector import containers, providers</p>
+<p>class Regularizer:
+    def <strong>init</strong>(self, alpha: float) -&gt; None:
+        self.alpha = alpha</p>
+<p>class Loss:
+    def <strong>init</strong>(self, regularizer: Regularizer) -&gt; None:
+        self.regularizer = regularizer</p>
+<p>class ClassificationTask:
+    def <strong>init</strong>(self, loss: Loss) -&gt; None:
+        self.loss = loss</p>
+<p>class Algorithm:
+    def <strong>init</strong>(self, task: ClassificationTask) -&gt; None:
+        self.task = task</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>algorithm_factory = providers.Factory(
+    Algorithm,
+    task=providers.Factory(
+        ClassificationTask,
+        loss=providers.Factory(
+            Loss,
+            regularizer=providers.Factory(
+                Regularizer,
+            ),
+        ),
+    ),
+)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()</p>
+<pre class="codehilite"><code>algorithm_1 = container.algorithm_factory(
+    task__loss__regularizer__alpha=0.5,
+)
+assert algorithm_1.task.loss.regularizer.alpha == 0.5
+
+algorithm_2 = container.algorithm_factory(
+    task__loss__regularizer__alpha=0.7,
+)
+assert algorithm_2.task.loss.regularizer.alpha == 0.7
+</code></pre>
+
+<p>```</p>
+<p>You can also create aggregate classes</p>
+<p><img alt="Untitled" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/601a689b-da7c-4df1-8bd7-9a178914894c/Untitled.png" /></p>
+<p>```python
+import dataclasses
+import sys</p>
+<p>from dependency_injector import containers, providers</p>
+<p>@dataclasses.dataclass
+class Game:
+    player1: str
+    player2: str</p>
+<pre class="codehilite"><code>def play(self):
+    print(
+        f'{self.player1} and {self.player2} are '
+        f'playing {self.__class__.__name__.lower()}'
+    )
+</code></pre>
+
+<p>class Chess(Game):
+    ...</p>
+<p>class Checkers(Game):
+    ...</p>
+<p>class Ludo(Game):
+    ...</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>game_factory = providers.FactoryAggregate(
+    chess=providers.Factory(Chess),
+    checkers=providers.Factory(Checkers),
+    ludo=providers.Factory(Ludo),
+)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    game_type = sys.argv[1].lower()
+    player1 = sys.argv[2].capitalize()
+    player2 = sys.argv[3].capitalize()</p>
+<pre class="codehilite"><code>container = Container()
+
+selected_game = container.game_factory(game_type, player1, player2)
+selected_game.play()
+
+# $ python factory_aggregate.py chess John Jane
+# John and Jane are playing chess
+#
+# $ python factory_aggregate.py checkers John Jane
+# John and Jane are playing checkers
+#
+# $ python factory_aggregate.py ludo John Jane
+# John and Jane are playing ludo
+</code></pre>
+
+<p>```</p>
+</li>
+<li>
+<p><strong>Singleton Provider</strong></p>
+<p>Singleton providers create objects that operate in singleton mode, as the name suggests.</p>
+<p>It was convenient to make database engines or sessions singletons.</p>
+<p>Singleton providers can be thought of as having one object bound per container. </p>
+<p>```python
+from dependency_injector import containers, providers</p>
+<p>class UserService:
+    ...</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>user_service_provider = providers.Singleton(UserService)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container1 = Container()
+    user_service1 = container1.user_service_provider()
+    assert user_service1 is container1.user_service_provider()</p>
+<pre class="codehilite"><code>container2 = Container()
+user_service2 = container2.user_service_provider()
+assert user_service2 is container2.user_service_provider()
+
+assert user_service1 is not user_service2
+</code></pre>
+
+<p>```</p>
+<p>If you need a singleton object to be shared across multiple threads, use the ThreadSafeSingleton provider</p>
+<p>```python
+import threading
+import queue</p>
+<p>from dependency_injector import containers, providers</p>
+<p>def put_in_queue(example_object, queue_object):
+    queue_object.put(example_object)</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>thread_local_object = providers.ThreadLocalSingleton(object)
+
+queue_provider = providers.ThreadSafeSingleton(queue.Queue)
+
+put_in_queue = providers.Callable(
+    put_in_queue,
+    example_object=thread_local_object,
+    queue_object=queue_provider,
+)
+
+thread_factory = providers.Factory(
+    threading.Thread,
+    target=put_in_queue.provider,
+)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()</p>
+<pre class="codehilite"><code>n = 10
+threads = []
+for thread_number in range(n):
+    threads.append(
+        container.thread_factory(name='Thread{0}'.format(thread_number)),
+    )
+for thread in threads:
+    thread.start()
+for thread in threads:
+    thread.join()
+
+all_objects = set()
+while not container.queue_provider().empty():
+    all_objects.add(container.queue_provider().get())
+
+assert len(all_objects) == len(threads) == n
+# Queue contains same number of objects as number of threads where
+# thread-local singleton provider was used.
+</code></pre>
+
+<p>```</p>
+</li>
+<li>
+<p><strong>Callable Provider</strong></p>
+<p>Callable providers return callable functions</p>
+<p>```python
+import passlib.hash</p>
+<p>from dependency_injector import containers, providers</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>password_hasher = providers.Callable(
+    passlib.hash.sha256_crypt.hash,
+    salt_size=16,
+    rounds=10000,
+)
+
+password_verifier = providers.Callable(passlib.hash.sha256_crypt.verify)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()</p>
+<pre class="codehilite"><code>hashed_password = container.password_hasher('super secret')
+assert container.password_verifier('super secret', hashed_password)
+</code></pre>
+
+<p>```</p>
+</li>
+<li>
+<p><strong>Coroutine Provider</strong></p>
+<p>Coroutine providers are used when creating dependencies for asynchronous operations</p>
+<p>```python
+import asyncio</p>
+<p>from dependency_injector import containers, providers</p>
+<p>async def coroutine(arg1, arg2):
+    await asyncio.sleep(0.1)
+    return arg1, arg2</p>
+<p>class Container(containers.DeclarativeContainer):</p>
+<pre class="codehilite"><code>coroutine_provider = providers.Coroutine(coroutine, arg1=1, arg2=2)
+</code></pre>
+
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()</p>
+<pre class="codehilite"><code>arg1, arg2 = asyncio.run(container.coroutine_provider())
+assert (arg1, arg2) == (1, 2)
+assert asyncio.iscoroutinefunction(container.coroutine_provider)
+</code></pre>
+
+<p>```</p>
+</li>
+</ol>
+<p>There are also various other providers built-in. (I haven't used all of them either...)</p>
+<p><a href="https://python-dependency-injector.ets-labs.org/containers/index.html"><strong>Container</strong></a></p>
+<p>A container is a collection of providers. You can create application dependencies into a single class to use as a single class or combine multiple containers.</p>
+<p>There are two types of containers.</p>
+<ol>
+<li>Declarative Container</li>
+</ol>
+<pre class="codehilite"><code class="language-python">from dependency_injector import containers, providers
+
+class Container(containers.DeclarativeContainer):
+    factory1 = providers.Factory(object)
+    factory2 = providers.Factory(object)
+
+if __name__ == '__main__':
+    container = Container()
+
+    object1 = container.factory1()
+    object2 = container.factory2()
+
+    print(container.providers)
+    # {
+    #     'factory1': &lt;dependency_injector.providers.Factory(...),
+    #     'factory2': &lt;dependency_injector.providers.Factory(...),
+    # }
+</code></pre>
+
+<p>This is the most basic container used. In most of my use cases, I was able to create containers in a declarative way.</p>
+<ol>
+<li>Dynamic Container</li>
+</ol>
+<pre class="codehilite"><code class="language-python">from dependency_injector import containers, providers
+
+if __name__ == '__main__':
+    container = containers.DynamicContainer()
+    container.factory1 = providers.Factory(object)
+    container.factory2 = providers.Factory(object)
+
+    object1 = container.factory1()
+    object2 = container.factory2()
+
+    print(container.providers)
+    # {
+    #     'factory1': &lt;dependency_injector.providers.Factory(...),
+    #     'factory2': &lt;dependency_injector.providers.Factory(...),
+    # }
+</code></pre>
+
+<p>Dynamic containers dynamically create dependencies in the container. </p>
+<pre class="codehilite"><code class="language-python">from dependency_injector import containers, providers
+
+class UserService:
+    ...
+
+class AuthService:
+    ...
+
+def populate_container(container, providers_config):
+    for provider_name, provider_info in providers_config.items():
+        provided_cls = globals().get(provider_info['class'])
+        provider_cls = getattr(providers, provider_info['provider_class'])
+        setattr(container, provider_name, provider_cls(provided_cls))
+
+if __name__ == '__main__':
+    services_config = {
+        'user': {
+            'class': 'UserService',
+            'provider_class': 'Factory',
+        },
+        'auth': {
+            'class': 'AuthService',
+            'provider_class': 'Factory',
+        },
+    }
+    services = containers.DynamicContainer()
+
+    populate_container(services, services_config)
+
+    user_service = services.user()
+    auth_service = services.auth()
+
+    assert isinstance(user_service, UserService)
+    assert isinstance(auth_service, AuthService)
+</code></pre>
+
+<p>In my personal opinion, this method would inevitably make the application's entry point complex, so I don't recommend it...</p>
+<p>However, in unavoidable cases, you can create DI/IoC containers this way.</p>
+<p><strong>Wiring</strong></p>
+<p>This actually serves the role of injecting the dependencies created above into application logic (class methods or functions).</p>
+<p>To use dependencies created by containers and their providers, <strong>you must select the Python module to inject into</strong> (Caution!!!)</p>
+<p>For parts that directly use wiring, <strong>use the <code>@inject</code> decorator</strong></p>
+<p>This decorator can inject two main things:</p>
+<ol>
+<li>The value that the provider injects</li>
+<li>The provider itself</li>
+</ol>
+<p>Let's learn more through the examples below</p>
+<ol>
+<li>
+<p><strong>Value injected by provider</strong></p>
+<p>```python</p>
+<h1>containers.py</h1>
+<p>from dependency_injector import containers, providers</p>
+<p>class User:
+    def <strong>init</strong>(name: str) -&gt; None:
+        self.name = name</p>
+<p>class Container(containers.DeclarativeContainer):
+    user = providers.Factory(User, name="humphrey")</p>
+<h1>main.py</h1>
+<p>@inject # 1
+def main(user: User = Provide[Container.user]):
+    print(f"He is {user.name}")    </p>
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()
+    container.wire(modules=[sys.modules[<strong>name</strong>]]) # 2</p>
+<pre class="codehilite"><code>main() # He is Humphrey
+</code></pre>
+
+<p>```</p>
+<p><code>#1</code> attached the <code>inject</code> decorator to the function that will inject dependencies</p>
+<p><code>#2</code> wired the module to inject dependencies into (<code>main</code> module) to the container</p>
+<p>You can see that the name field value of the User object created by the factory provider is properly injected.</p>
+</li>
+<li>
+<p><strong>Provider itself</strong></p>
+<p>```python</p>
+<h1>containers.py</h1>
+<p>from dependency_injector import containers, providers</p>
+<p>class User:
+    def <strong>init</strong>(name: str) -&gt; None:
+        self.name = name</p>
+<p>class Container(containers.DeclarativeContainer):
+    user = providers.Factory(User, name="humphrey")</p>
+<h1>main.py</h1>
+<p>@inject 
+def main(user_provider: Callable[..., User] = Provider[Container.user]): # 1
+    user_humphrey = user_provider() #2
+    print(f"He is {user_humphrey.name}")    </p>
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = Container()
+    container.wire(modules=[sys.modules[<strong>name</strong>]]) </p>
+<pre class="codehilite"><code>main() # He is Humphrey
+</code></pre>
+
+<p>```</p>
+<p>Note that <code>#1</code>'s signature has changed from the example above</p>
+<p>When you call user_provider in <code>#2</code>, it returns a User object</p>
+</li>
+</ol>
+<h2>Examples</h2>
+<ul>
+<li>
+<p>Refactoring dependencies with dependency injector (w. FastAPI)</p>
+<p>Let's start with a small CRUD service</p>
+<p>```python</p>
+<h1>domain.py</h1>
+<p>Base = declarative_base()</p>
+<p>class User(Base):
+    <strong>tablename</strong> = "users"
+    id: str = sa.Column(sa.String, primary_key=True, default=ulid.new().str)
+    name: str = sa.Column(sa.String, nullable=False)
+    email: str = sa.Column(sa.String, nullable=False)</p>
+<h1>repository.py</h1>
+<p>from typing import List
+from sqlalchemy.orm.scoping import ScopedSession
+from app.domain import User</p>
+<p>class Repository:
+    def <strong>init</strong>(self, session_factory: ScopedSession) -&gt; None:
+        self.session_factory = session_factory</p>
+<pre class="codehilite"><code>def get(self, ref: str) -&gt; User:
+    with self.session_factory() as session:
+        return session.query(User).filter_by(id=ref).first()
+
+def add(self, user: User) -&gt; None:
+    with self.session_factory() as session:
+        session.add(user)
+        session.commit()
+
+def fetch_all(self) -&gt; List[User]:
+    with self.session_factory() as session:
+        return session.query(User).all()
+
+def delete_user(self, user_id: str) -&gt; None:
+    with self.session_factory() as session:
+        found_user = session.query(User).filter_by(id=user_id).first()
+        if not found_user:
+            raise
+        session.delete(found_user)
+        session.commit()
+</code></pre>
+
+<h1>service.py</h1>
+<p>from app.domain import User
+from app.repository import Repository</p>
+<p>class Service:
+    def <strong>init</strong>(self, repository: Repository) -&gt; None:
+        self.repository = repository</p>
+<pre class="codehilite"><code>def get_by_id(self, id: str):
+    return self.repository.get(ref=id)
+
+def add_new_user(self, name: str, email: str) -&gt; None:
+    self.repository.add(User(name=name, email=email))
+
+def get_all(self):
+    return self.repository.fetch_all()
+
+def delete_user(self, user_id) -&gt; None:
+    self.repository.delete_user(user_id=user_id)
+</code></pre>
+
+<p>```</p>
+<p>I defined the User domain model, repository, and service.</p>
+<p>Since we're using SqlAlchemy, database-related dependencies are needed, and this strongly couples with the FastAPI bootstrap presentation layer</p>
+<p>```python
+from fastapi import FastAPI, Depends, APIRouter
+from pydantic import BaseModel
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.scoping import ScopedSession
+from sqlalchemy.pool import StaticPool
+from starlette.responses import JSONResponse</p>
+<p>from app.domain import Base
+from app.repository import Repository
+from app.service import Service</p>
+<p>app = FastAPI()</p>
+<p>class UserRegisterInSchema(BaseModel):
+    name: str
+    email: str</p>
+<h1>1</h1>
+<p>engine = create_engine(url="sqlite:///", echo=True, connect_args={'check_same_thread': False}, poolclass=StaticPool, )</p>
+<h1>2</h1>
+<p>def get_service():
+    try:
+        session = ScopedSession(sessionmaker(bind=engine))
+        repository = Repository(session_factory=session)
+        yield Service(repository=repository)
+    except Exception:
+        raise
+    finally:
+        pass</p>
+<p>@app.on_event("startup")
+async def startup_event():
+    Base.metadata.create_all(engine)</p>
+<p>@app.get("/users")
+def get_all_users(usecase: Service = Depends(get_service)):
+    return usecase.get_all()</p>
+<p>@app.get("/users/{user_id}")
+def get_user_by_id(user_id: str, usecase: Service = Depends(get_service)):
+    return usecase.get_by_id(id=user_id)</p>
+<p>@app.post("/users")
+def register(request: UserRegisterInSchema, usecase: Service = Depends(get_service)):
+    try:
+        usecase.add_new_user(name=request.name, email=request.email)
+    except:
+        return JSONResponse(status_code=500, content={"message": "유저 생성이 실패했습니다"})</p>
+<p>@app.delete("/users/{user_id}")
+def delete_user(user_id: str, usecase: Service = Depends(get_service)):
+    try:
+        usecase.delete_user(user_id=user_id)
+    except:
+        return JSONResponse(status_code=500, content={"message": "유저 삭제가 실패했습니다"})
+```</p>
+<h1>1 had to create the engine as a module global variable because the engine had to be called once in the <code>get_service</code> function and once more in <code>startup_event</code>. The side effect of this is that if other modules import this module, they can always create a new engine because it's a module variable.</h1>
+<h1>2 uses FastAPI's Depends feature to create session, repository, and service in order and pass them as a generator through yield expression. (FastAPI provides this method of dependency injection)</h1>
+<p>The disadvantage of the above code is that, as mentioned, the part that creates FastAPI and router is strongly coupled with database-related logic, making testing difficult.</p>
+<p>Next, let's refactor the above code more cleanly with dependency injector</p>
+<p>```python
+from dependency_injector import containers, providers
+from pydantic import BaseSettings, Field
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.scoping import ScopedSession
+from sqlalchemy.pool import StaticPool</p>
+<p>from app.repository import Repository
+from app.service import Service</p>
+<p>class DatabaseSettings(BaseSettings):
+    url: str = Field(default="sqlite:///", env="db_url")</p>
+<p>class ApplicationSettings(BaseSettings):
+    db = DatabaseSettings()</p>
+<p>class ApplicationContainer(containers.DeclarativeContainer):
+    config = providers.Configuration()
+    engine = providers.Singleton(create_engine, url=config.db.url, echo=True,
+                                 connect_args={'check_same_thread': False},
+                                 poolclass=StaticPool)
+    session_factory = providers.Singleton(sessionmaker, bind=engine)
+    session = providers.Singleton(ScopedSession, session_factory)
+    repository = providers.Factory(Repository, session_factory=session)
+    service = providers.Factory(Service, repository=repository)
+```</p>
+<p>I moved the database-related logic from main.py and the creation logic for repository and service to dependency-injector. I was also able to add the functionality to receive the db url from environment variables, which didn't exist before.</p>
+<p>Using dependency-injector this way makes main.py much lighter</p>
+<p>```python
+import sys</p>
+<p>import uvicorn
+from dependency_injector.wiring import Provide, inject
+from fastapi import FastAPI, Depends
+from pydantic import BaseModel
+from starlette.responses import JSONResponse</p>
+<p>from app.containers import ApplicationContainer, ApplicationSettings
+from app.domain import Base
+from app.service import Service</p>
+<p>class UserRegisterInSchema(BaseModel):
+    name: str
+    email: str</p>
+<p>app = FastAPI()</p>
+<p>@app.get("/users")
+@inject
+def get_all_users(usecase: Service = Depends(Provide[ApplicationContainer.service])):
+    return usecase.get_all()</p>
+<p>@app.get("/users/{user_id}")
+@inject
+def get_user_by_id(user_id: str, usecase: Service = Depends(Provide[ApplicationContainer.service])):
+    return usecase.get_by_id(id=user_id)</p>
+<p>@app.post("/users")
+@inject
+def register(request: UserRegisterInSchema, usecase: Service = Depends(Provide[ApplicationContainer.service])):
+    try:
+        usecase.add_new_user(name=request.name, email=request.email)
+    except:
+        return JSONResponse(status_code=500, content={"message": "유저 생성이 실패했습니다"})</p>
+<p>@app.delete("/users/{user_id}")
+@inject
+def delete_user(user_id: str, usecase: Service = Depends(Provide[ApplicationContainer.service])):
+    try:
+        usecase.delete_user(user_id=user_id)
+    except:
+        return JSONResponse(status_code=500, content={"message": "유저 삭제가 실패했습니다"})</p>
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    container = ApplicationContainer()
+    container.config.from_pydantic(ApplicationSettings())
+    container.wire([sys.modules[<strong>name</strong>]])
+    Base.metadata.create_all(container.engine()) #3
+    uvicorn.run(app=app)
+```</p>
+<ol>
+<li>FastAPI bootstrapping code and database-related code have been decoupled.</li>
+<li>inject decorator has been added to the router</li>
+<li>Dependency injection control that was in the get_service function has been moved to ApplicationContainer</li>
+<li>The create_all function that was in the startup method has been moved to <strong>main</strong>. This was an unavoidable choice because FastAPI cannot use depends functions during startup. There might be a way to solve this with dependency injector </li>
+</ol>
+</li>
+</ul>
+<h2>Summary</h2>
+<p>Python is a multi-paradigm language. I think you don't need to know object orientation in detail like Java, and you can use it according to your purpose regardless of whether it's functional or whatever orientation. (Actually, you can write it however you want - what language doesn't allow that...). However, to write maintainable code in a team of scale, you inevitably encounter many problems that object orientation tries to solve, and I think there's a big difference between knowing and not knowing these solutions.</p>
+<p>Even if someone might not like the way dependency injector implements dependency injection, I personally like it and apply it to almost all projects. Let's write code that manages dependencies well so that anyone who takes over my code can easily understand the core logic and easily add features (really...)</p>
+<p><strong>Personal Thoughts</strong></p>
+<ul>
+<li>Since it's a difficult concept, I was confused about whether I was expressing it correctly while writing.</li>
+<li>I want to code well</li>
+</ul>
+    </div>
+</article>
+
+    </main>
+
+    <footer>
+        <!-- Footer content if any -->
+    </footer>
+</body>
+
+</html>

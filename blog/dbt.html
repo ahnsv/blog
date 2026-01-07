@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>How to build an efficient ELT Pipeline with dbt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-divider {
+            width: 1px;
+            height: 20px;
+            background-color: #ccc;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1><a href="/" class="nav-link">Humphrey's Humblog</a></h1>
+        <nav>
+            <a href="/" class="nav-link">Blog</a>
+            <div class="nav-divider"></div>
+            <a href="https://ahnsv.github.io" target="_blank" class="nav-link">About</a>
+        </nav>
+    </header>
+
+    <main>
+        
+<article class="post">
+    <header style="margin-bottom: 2rem;" class="post-header">
+        <h1>How to build an efficient ELT Pipeline with dbt</h1>
+        <div class="date">2021-06-05</div>
+    </header>
+
+    <div class="post-content">
+        <h2>Background</h2>
+<h3>The State of Data (as of 2021)</h3>
+<p>Whether you’re a Fortune 500 company managing petabytes or a startup just beginning to collect data, organizations across the US are investing in data warehouses and data lakes. The value of data is now universally recognized—terms like "big data" and "my data" are everywhere. Data is the foundation for leveraging technologies like AI and machine learning.</p>
+<h3>"A string of pearls is only valuable when strung together"</h3>
+<p>Collecting data is just the first step; the real value comes from putting it to use. Most companies start by extracting key metrics to inform business decisions. As organizations mature, they move beyond simple reporting—using machine learning to build new product features, developing internal tools, and finding innovative ways to drive business value.</p>
+<p>To add a more personal perspective, the company I currently work for has been building and using a BigQuery-based data warehouse for nearly three years. During this time, a significant amount of historical data has accumulated in BigQuery, and we've been leveraging machine learning to <a href="https://tech.socarcorp.kr/data/2020/08/19/socar-data-group-intern-review.html">solve many problems</a>.</p>
+<p>However, as various use cases emerge from this accumulated data, problems inevitably begin to surface. </p>
+<ol>
+<li>
+<p>Data Quality</p>
+<p>Data can continuously change over time, leading to declining data quality. There are generally two main scenarios: 1) <strong>Natural data drift</strong>, and 2) <strong>Errors caused by faulty logic or unhandled external factors</strong>. In most cases, edge cases that fall outside human expectations or simple human errors lead to data contamination. </p>
+</li>
+<li>
+<p>Data Version Management</p>
+<p>As mentioned above, as data continuously changes, data pipelines also undergo changes. While Spark-based data pipeline code is typically managed through git, managing the resulting data is not straightforward (data warehouses usually manage versions through table labels or table columns). SQL-based pipelines are even more challenging. Unless SQL is managed as code, tracking changes is difficult, and due to SQL's nature, conducting <strong>peer reviews</strong> on complex pipelines with 500+ lines of SQL code line by line is not easy. </p>
+</li>
+<li>
+<p>Data Ownership</p>
+<p>One might wonder if data doesn't belong to everyone in the company, but the reality is different. The more critical the data, the more important it becomes to have someone responsible for fixing issues when they arise, and someone with ownership to review and deploy new versions when logic changes, just like with code.</p>
+</li>
+<li>
+<p>Data Dependency Management</p>
+<p>As the amount of data grows, more logic emerges that creates subsequent tables based on joins with fact/dimension tables or the update status of other tables (typically expressible as DAGs). This can lead to side effects when someone deletes or modifies existing tables and datasets. Without a clear understanding of data dependencies, it becomes difficult to safely manage data. </p>
+</li>
+</ol>
+<h3>The Need for Systematic Data Management</h3>
+<p>Several data-related terms have emerged to address the problems mentioned above. </p>
+<ol>
+<li>
+<p>Data Catalog</p>
+<p><img alt="Source: Complete Guide to Data Catalog Tools and Architecture" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/9c4e7e41-96d5-4ac6-a592-c097cf5b6204/Untitled.png" /></p>
+<p>Source: <a href="https://www.google.com/url?sa=i&amp;url=https%3A%2F%2Fwww.xenonstack.com%2Finsights%2Fdata-catalog%2F&amp;psig=AOvVaw07NJQZW5arZHRXjhjYc0zf&amp;ust=1622962278103000&amp;source=images&amp;cd=vfe&amp;ved=0CA0QjhxqFwoTCMjyiuPz__ACFQAAAAAdAAAAABAD">Complete Guide to Data Catalog Tools and Architecture</a></p>
+<p>Data catalogs help manage data effectively by collecting metadata. AWS Glue Catalog is a representative Data Catalog provided by cloud providers, while BigQuery and Snowflake have their Data Warehouses serve the catalog role as well. Databricks' <a href="https://databricks.com/product/delta-lake-on-databricks">Delta Lake</a> is also known to provide similar functionality. </p>
+</li>
+<li>
+<p>Data Observability</p>
+<p><img alt="Source: https://newrelic.com" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/56610972-b59a-4361-93e2-a392041b3f45/Untitled.png" /></p>
+<p>Source: <a href="https://newrelic.com/">https://newrelic.com</a></p>
+<p>Data observability provides beautiful visualizations of data pipelines and data distributions, making it easier for people to understand and efficiently manage data quality. <a href="https://newrelic.com">New Relic</a> and <a href="https://databand.ai">Databand</a> are well-known solutions in this space. </p>
+</li>
+<li>
+<p>Data Lineage</p>
+<p><img alt="Source: Data Lineage - Mapping Your Data Journey | Subsurface" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/e3962855-85dc-4091-a0d5-ec0549c683ca/Untitled.png" /></p>
+<p>Source: <a href="https://www.google.com/url?sa=i&amp;url=https%3A%2F%2Fwww.dremio.com%2Fdata-lake%2Fdata-lineage%2F&amp;psig=AOvVaw3WqsksGr2GLB7qq0ymGt2m&amp;ust=1622962473367000&amp;source=images&amp;cd=vfe&amp;ved=0CA0QjhxqFwoTCMCn88H0__ACFQAAAAAdAAAAABA9">Data Lineage - Mapping Your Data Journey | Subsurface</a></p>
+<p>Data lineage, like catalogs, is a method for efficiently managing metadata. It visualizes data flow and implements lineage tracking to solve data version management and dependency identification problems.</p>
+<p><img alt="Source: dbt introduction" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/cc94774a-ab76-4d97-abef-d422445e67e5/Untitled.png" /></p>
+<p>Source: <a href="https://docs.getdbt.com/docs/introduction">dbt introduction</a></p>
+</li>
+</ol>
+<p>In addition, modern data infrastructure is seeing an influx of various terms like <a href="https://searchdatamanagement.techtarget.com/definition/data-governance">Data Governance</a> and <a href="https://bcho.tistory.com/1379">Data Mesh</a>. Rather than applying all of them, it's better to focus on solving actual problems with methodologies that fit your specific situation.</p>
+<p>For more information, check out:</p>
+<p><a href="https://www.youtube.com/playlist?list=PLL-_zEJctPoJ92HmbGxFv1Pv_ugsggGD2">Understanding Modern Data Infrastructure</a></p>
+<p>This series covers various modern data stacks.</p>
+<p>Today's topic, dbt, addresses the problems mentioned above through Data Lineage and focuses on the T (Transform) in ELT pipelines. </p>
+<h2>What is dbt?</h2>
+<p>dbt stands for <strong>data build tool</strong> and is designed to make <strong>transformation easy</strong>, specifically SQL-based transformation in the extract-transform-load process. </p>
+<p><a href="https://www.getdbt.com">dbt (data build tool) - Transform data in your warehouse</a></p>
+<p>(It supports plugins that communicate with Spark clusters, but rather than using Python/Scala, it appears to communicate with thrift/HTTP servers and execute HiveQL).</p>
+<p>It's widely used by companies like GitLab, Grailed, Slack, and Notion. (However, use cases in Korea are not yet well-known)</p>
+<p>In summary:</p>
+<blockquote>
+<p>A SQL-based Transform tool focused solely on the T in ETL
+</p>
+</blockquote>
+<h3>CLI vs Cloud</h3>
+<p>dbt has <a href="https://docs.getdbt.com/dbt-cli/cli-overview">CLI mode</a> and <a href="https://docs.getdbt.com/docs/dbt-cloud/cloud-overview">Cloud mode</a>.</p>
+<p>CLI mode installs dbt as a Python package. It uses YAML for managing table metadata and unit tests, Jinja templates for various macros and UDFs, and calculates dependencies between tables. CLI mode is also <strong>free</strong>(!). More details will be covered below.</p>
+<p>https://www.loom.com/embed/05f9c34b17c74c97b98286683dafd420</p>
+<p>Cloud mode is a paid service. It provides all the features available in CLI mode, plus an integrated SQL development environment (IDE). Through the web IDE, analysts and SQL users can control unit testing for their tables, pull requests from a workflow perspective, and basic Git branch operations like software developers, making the overall SQL development process easier to maintain. It also allows creating CronJobs. dbt Cloud service pricing is as follows. </p>
+<p><img alt="Source: https://www.getdbt.com/pricing/" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/357f9be1-d98d-43bc-8a20-ae3b8a29f696/Untitled.png" /></p>
+<p>Source: https://www.getdbt.com/pricing/</p>
+<p>Personally, I feel dbt Cloud's strongest selling point is that it simplifies the tedious aspects of dbt work (checking compiled queries, reviewing results, git operations, etc.) through its web interface. However, dbt CLI can handle most features as well. (Not to mention, $50 per person per month is quite expensive...)</p>
+<h3>What are the advantages and disadvantages?</h3>
+<p>Based on my experience implementing dbt in an actual company:</p>
+<p><strong>Advantages</strong></p>
+<ul>
+<li>Various data unit testing can make existing pipelines more robust</li>
+<li>Intuitive Docs UI reduces communication costs for finding data</li>
+<li>Long SQL can be broken down into reusable modules</li>
+<li>(Not dbt-specific) Managing SQL through code and development cycles allows systematic management of queries and tables through SQL reviews and style conventions</li>
+<li>Various macros and open-source tools exist</li>
+<li>Uses existing data warehouse resources more efficiently without requiring separate cloud or on-premises resources</li>
+<li>Reduces overhead for SQL-based data operations, allowing focus on table modeling and architectural considerations</li>
+</ul>
+<p><strong>Disadvantages</strong></p>
+<ul>
+<li>Requires systematic management of YAML, which can lead to manual tasks</li>
+<li>Has a learning curve, requiring internal training</li>
+<li>It's a tool focused only on Transform, so other tools must be used alongside it for Extract or Load</li>
+<li>When using only CLI, monitoring which queries are running is not easy<ul>
+<li>BigQuery adapter and others have mechanisms like max bytes billed limit that can be well controlled</li>
+</ul>
+</li>
+</ul>
+<h3>When to consider adopting dbt</h3>
+<ul>
+<li>When there are many SQL-based data queries and table creations</li>
+<li>When using MPP-based data warehouses in ELT pipeline environments<ul>
+<li>Traditional ETL pipelines often combine Transform and Load (like using PySpark to <code>df.read</code> then <code>df.write</code>...)</li>
+<li>dbt is a library for transformation, with limited support for loading</li>
+</ul>
+</li>
+<li>When there are many people in the company who work with SQL<ul>
+<li>Since dbt performs data transformation work based on SQL, the more people who work with SQL, the greater the productivity impact</li>
+</ul>
+</li>
+<li>When systematic management of derived tables is needed due to high query costs<ul>
+<li>Due to the nature of BigQuery and Snowflake, creating tables is much easier than with traditional RDBMS. This creates a trade-off where tables are created indiscriminately and the same table is created in multiple places, leading to unnecessary data scanning and high query costs</li>
+<li>When you start managing tables systematically through dbt, it becomes easier to understand metadata such as which tables are currently managed, who has ownership, and what columns and tests are used for management. Therefore, in the long term, except for unavoidable cases, you can reduce both the effort to find needed data and query costs</li>
+</ul>
+</li>
+</ul>
+<h3>When not to consider adopting dbt</h3>
+<ul>
+<li>When there aren't many people in the company who work with SQL</li>
+<li>When Hadoop-based data warehouses and Spark-based data processing are more familiar and well-maintained</li>
+<li>When the speed of handling ad-hoc requests is more important than systematic metadata and table management</li>
+</ul>
+<h2>Understanding dbt's Basic Features</h2>
+<p>The following explanation is based on dbt CLI.</p>
+<p>All code and development environment configurations can be found in the GitHub repository below.</p>
+<p><a href="https://github.com/ahnsv/dbt-proof-of-concept">ahnsv/dbt-proof-of-concept</a></p>
+<p>The configuration for demonstrating dbt's features is as follows:</p>
+<ul>
+<li>dbt codebase</li>
+<li>Postgres Docker for DW mocking</li>
+<li>
+<p>(optional) devcontainer</p>
+</li>
+<li>
+<p>Python 3.8.x based dbt initial setup</p>
+<p>Install dependencies using pyenv and poetry</p>
+<p>```bash</p>
+<h1>cd <PROJECT_NAME></h1>
+<p>$ pyenv shell 3.8.2</p>
+<p>$ poetry config virtualenvs.in-project true # Install dependencies in .venv</p>
+<p>$ poetry new dbt # Create a new poetry project</p>
+<p>$ poetry add "dbt-core==0.19.1" "dbt-postgres==0.19.1"</p>
+<h1>cd <PROJECT_NAME>/dbt</h1>
+<p>$ dbt init --adapter postgres core # Create a dbt project</p>
+<p>$ cd core &amp;&amp; tree .
+├── README.md
+├── analysis
+├── data
+├── dbt_project.yml
+├── macros
+├── models
+│   └── example
+│       ├── my_first_dbt_model.sql
+│       ├── my_second_dbt_model.sql
+│       └── schema.yml
+├── snapshots
+└── tests</p>
+<p>```</p>
+</li>
+</ul>
+<p>Additionally, the databases and warehouses currently supported by dbt are as follows:</p>
+<ul>
+<li>BigQuery</li>
+<li>Snowflake</li>
+<li>Postgres</li>
+<li>Redshift</li>
+<li>MS SQL</li>
+<li>Oracle</li>
+<li>Presto</li>
+<li>Apache Spark (Thrift, HTTP Server)</li>
+<li>Microsoft Azure Synapse DW</li>
+<li>Dremio</li>
+<li>ClickHouse</li>
+</ul>
+<p>(In dbt, these are expressed as <strong>adapters</strong>)</p>
+<h3>dbt Project Structure</h3>
+<pre class="codehilite"><code>├── README.md
+├── analysis
+├── data
+├── dbt_project.yml
+├── macros
+├── models
+│   └── example
+│       ├── my_first_dbt_model.sql
+│       ├── my_second_dbt_model.sql
+│       └── schema.yml
+├── snapshots
+└── tests
+</code></pre>
+
+<p>This is the structure of an initial dbt project. </p>
+<ul>
+<li><code>data</code> contains static files for data feeding like CSV files. You can load data into the data warehouse/database by executing insert queries through the <code>dbt seed</code> command. (<a href="https://www.notion.so/dbt-ELT-57ea30f4a6ac4ed598782510b4590abe?pvs=21">Example</a>)</li>
+<li>
+<p><code>analysis</code> contains SQL files for analysis only, not for creating tables. Queries are not actually executed through the <code>dbt run</code> command, but are used only for compile testing (<code>dbt compile</code>)</p>
+<ul>
+<li>
+<p>Example</p>
+<p><code>analysis/customer_count.sql</code></p>
+<p>```sql
+with customers as (
+    select *
+    from {{ ref('raw_customer') }}
+)</p>
+<p>select count(1)
+from customers
+```</p>
+<p>This query is compiled as follows:</p>
+<p><code>target/compiled/core/analysis/customer_count.sql</code></p>
+<p>```sql
+with customers as (
+    select *
+    from "dbt"."transformed"."raw_customer"
+)</p>
+<p>select count(1)
+from customers
+```</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>dbt_project.yml</code> contains metadata for the dbt project. (<a href="https://docs.getdbt.com/reference/dbt_project.yml">Documentation</a>)</p>
+</li>
+<li>
+<p><code>macros</code> is a directory containing user-defined Jinja template macros.</p>
+<ul>
+<li>
+<p>Example</p>
+<p><code>sql
+{% macro cents_to_dollars(column_name, precision=2) %}
+    ({{ column_name }} / 100)::numeric(16, {{ precision }})
+{% endmacro %}</code></p>
+<p>The above macro can be used in models as follows:</p>
+<p><code>sql
+select
+  id as payment_id,
+  {{ cents_to_dollars('amount') }} as amount_usd,
+  ...
+from app_data.payments</code></p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>models</code> is where tables created with dbt are gathered. It's dbt's main working directory. (<a href="https://www.notion.so/dbt-ELT-57ea30f4a6ac4ed598782510b4590abe?pvs=21">Example</a>)</p>
+</li>
+<li>
+<p><code>snapshot</code> creates tables with information about snapshots of source tables</p>
+<ul>
+<li>
+<p>Example</p>
+<p>```sql
+{% snapshot orders_snapshot %}</p>
+<p>{{
+    config(
+      target_database='analytics',
+      target_schema='snapshots',
+      unique_key='id',</p>
+<pre class="codehilite"><code>  strategy='timestamp',
+  updated_at='updated_at',
+)
+</code></pre>
+
+<p>}}</p>
+<p>select * from {{ source('jaffle_shop', 'orders') }}</p>
+<p>{% endsnapshot %}
+```</p>
+<p>The above SQL file creates a model called orders_snapshot through the <code>dbt snapshot</code> command.</p>
+<p>When the query is first executed through the dbt snapshot command, the data at that point in time is attached with <code>dbt_valid_from</code> and <code>dbt_valid_to</code> columns.</p>
+<p>From the second time onwards, new rows are inserted into the table.</p>
+</li>
+</ul>
+<p>It's mainly used with source tables. (e.g., when you want to keep daily snapshots of tables that are consistently inserted through daily batches)</p>
+</li>
+<li>
+<p><code>tests</code> contains definitions of tests for models and snapshots</p>
+</li>
+</ul>
+<h3>dbt Terminology</h3>
+<ul>
+<li>
+<p>Model</p>
+<p>Simply put, it's a table. When you create a SQL file in the <code>models</code> directory, it's compiled into SQL syntax like <code>CREATE TABLE AS</code> or <code>CREATE OR REPLACE TABLE</code> and adds a table to the connected data warehouse and database. (Therefore, it's good to manage Schema and privileges well) If you don't give the <code>incremental</code> option, it overwrites the existing table (like TRUNCATE INSERT in BigQuery), so be careful.</p>
+</li>
+<li>
+<p>Source</p>
+<p>Refers to the source data/table when creating models. Unlike models, Source doesn't overwrite tables. According to <a href="https://docs.getdbt.com/docs/guides/best-practices">Best Practice</a>, rather than using Source directly, it's recommended to create Staging tables that rename columns from Source Tables according to conventions and, if necessary, make them in a form that's easy to work with through simple where clauses or joins. </p>
+</li>
+<li>
+<p>Schema</p>
+<p>People familiar with RDBMS might confuse it with Database - Schema - Table. dbt's Schema refers to the specification for tables that will be created through models (e.g., table name, description, column name, test ...)</p>
+<ul>
+<li>
+<p>Example schema.yml</p>
+<p>```yaml
+version: 2</p>
+<p>models:
+  - name: transactions
+    description: Table containing detailed information by order
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+        description: This is a unique identifier for an order</p>
+<pre class="codehilite"><code>  - name: customer_id
+    description: Foreign key to the customers table
+    tests:
+      - not_null
+      - relationships:
+          to: ref('stg_customers')
+          field: customer_id
+
+  - name: customer_name
+    description: customers full name
+    tests:
+      - not_null
+</code></pre>
+
+<p>```</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Profile</p>
+<p>This is metadata for connecting dbt with DW and DB. It's good to maintain a 1:1 relationship between one dbt project and one profile. More detailed information can be found in <a href="https://docs.getdbt.com/reference/profiles.yml">dbt's documentation</a>. By default, when you create a dbt project, it creates and uses <code>~/.dbt/profiles.yml</code>. However, in collaborative environments, there may be constraints on using different profiles for each local environment, so I personally recommend creating a profiles yaml inside the project and overriding it using the <code>--profiles-dir</code> flag.  </p>
+<ul>
+<li>
+<p>Example Profile yaml</p>
+<p>```sql
+config:
+    send_anonymous_usage_stats: False
+    use_colors: True</p>
+<p>dbt:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: warehouse
+      port: 5432
+      user: dbt
+      password: dbt
+      dbname: dbt
+      schema: transformed
+      threads: 3
+```</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Target</p>
+<p>It's most accurate to see this as the environment where dbt will run. Most are configured as dev/prod, dev/live, etc., and distinguish between configurations for running in development and production environments. By default, when executing dbt commands, settings like how many threads to use and (limited to some adapters) max bytes billed are set differently for each environment. </p>
+</li>
+</ul>
+<h3>Initial Data Loading</h3>
+<ol>
+<li>
+<p>Create a CSV file in the <code>data</code> directory</p>
+<p><img alt="" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/444fac9d-3893-4d63-a9cc-ba34fbe00f6d/Untitled.png" /></p>
+</li>
+<li>
+<p>Enter the <code>dbt seed</code> command</p>
+<p><img alt="" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/4ac6be46-2f54-4372-8e96-3da14a5693b3/Untitled.png" /></p>
+</li>
+<li>
+<p>You can create a table in the target based on the CSV file like a model</p>
+<p><img alt="" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/65663ba9-303a-44bf-ba68-c6cac8292ff6/Untitled.png" /></p>
+</li>
+</ol>
+<h3>Creating Your First Model</h3>
+<ol>
+<li>
+<p>Create <code>models/staging/stg_orders.sql</code></p>
+<p>```sql
+with source as (
+    select * from {{ ref('raw_orders') }}
+),</p>
+<p>renamed as (
+    select
+        id as order_id,
+        user_id as customer_id,
+        order_date,
+        status
+    from source
+)</p>
+<p>select * from renamed
+```</p>
+</li>
+<li>
+<p>Execute the <code>dbt run</code> command </p>
+<p><img alt="" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/97591abe-cfbf-453a-87ce-6a8e45531e2f/Untitled.png" /></p>
+</li>
+<li>
+<p>Check the table</p>
+</li>
+</ol>
+<p><img alt="" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/10a981df-8420-4bfd-8321-ce751febb658/Untitled.png" /></p>
+<ul>
+<li>For conventions on table layering like separating staging/mart, it's good to refer to the <a href="https://github.com/fishtown-analytics/corp/blob/master/dbt_style_guide.md">guide by fishtown analytics who created dbt</a>.</li>
+<li>
+<p>For model selection tips, if you give <code>+model_name</code> as the <code>--model</code> option, it will build all tables that have dependencies on that model. The related syntax is well organized in <a href="https://about.gitlab.com/handbook/business-technology/data-team/platform/dbt-guide/#command-line-cheat-sheet">GitLab's dbt guide</a>.</p>
+<p><img alt="Updates tables like payments, orders that are connected to the transactions table together." src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/2a165b50-05c2-404d-8e51-a2051c5f8b35/Untitled.png" /></p>
+<p>Updates tables like payments, orders that are connected to the transactions table together. </p>
+</li>
+</ul>
+<h3>Documentation</h3>
+<p>You can create a webpage to view the metadata of dbt models created so far with two commands.</p>
+<p><code>dbt docs generate</code></p>
+<p>This command compiles models, draws a dependency graph, and stores the metadata in the <code>target</code> folder (this is the default, but you can change it to another name in <code>dbt_project.yml</code>) in the form of <code>manifest.json</code> and <code>catalog.json</code>. It also creates an <code>index.html</code> file to visualize it.</p>
+<p><code>dbt docs serve</code></p>
+<p>Launches a simple web server so you can view it on localhost.</p>
+<p><img alt="dbt docs serve → localhost:8080" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/84eb6397-8f7d-4e84-b4fc-88e10486483f/Untitled.png" /></p>
+<p>dbt docs serve → <a href="http://localhost:8080">localhost:8080</a> </p>
+<p>As shown in the screenshot above, you can easily view the metadata, column information, and dependency relationships of the transactions model created in the example above in webpage format. The description is currently empty, but you can leave documentation about the table here in markdown format, such as what kind of table it is, simple logic explanations, etc. (<a href="https://docs.getdbt.com/docs/building-a-dbt-project/documentation#using-docs-blocks">Reference</a>)</p>
+<p><img alt="You can view table dependencies in more detail in fullscreen view." src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/76454ba8-9f54-4874-a071-4bb49db3ffd7/Untitled.png" /></p>
+<p>You can view table dependencies in more detail in fullscreen view. </p>
+<h3>Creating Your First Test</h3>
+<p>There are two main types of tests in dbt.</p>
+<ol>
+<li>Tests before running dbt run</li>
+<li>Tests after running dbt run</li>
+</ol>
+<p>For case 1, from basic tests like whether data is properly loaded into source tables, whether specific columns are non-null or unique, to custom test macros, you can have more test cases (for example, if the daily updated row count is n for a certain period, whether today's row count deviates significantly from this distribution... I'll explain this in more detail through the company's tech blog)</p>
+<p>For case 2, it tests whether data was created as expected for tables created through the dbt run command. Like case 1, you can test the pipeline using various test cases.</p>
+<p>You can add tests by simply adding a line or so of code to <code>schema.yml</code> (case 2) or <code>source.yml</code> (case 1).</p>
+<p>As an example, let's add test cases to check if data was properly loaded into the transactions model created above (case 2)</p>
+<pre class="codehilite"><code class="language-yaml">version: 2
+
+models:
+  - name: transactions
+    description: Table containing detailed information by order
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+        description: This is a unique identifier for an order
+
+      - name: customer_id
+        description: Foreign key to the customers table
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+
+      - name: customer_name
+        description: customers full name
+        tests:
+          - not_null
+
+      - name: order_date
+        description: Date (UTC) that the order was placed
+
+      - name: status
+        tests:
+          - accepted_values:
+              values:
+                [&quot;placed&quot;, &quot;shipped&quot;, &quot;completed&quot;, &quot;return_pending&quot;, &quot;returned&quot;]
+
+      - name: amount
+        description: Total amount (AUD) of the order
+        tests:
+          - not_null
+
+      - name: credit_card_amount
+        description: Amount of the order (AUD) paid for by credit card
+        tests:
+          - not_null
+
+      - name: coupon_amount
+        description: Amount of the order (AUD) paid for by coupon
+        tests:
+          - not_null
+
+      - name: bank_transfer_amount
+        description: Amount of the order (AUD) paid for by bank transfer
+        tests:
+          - not_null
+
+      - name: gift_card_amount
+        description: Amount of the order (AUD) paid for by gift card
+        tests:
+          - not_null
+</code></pre>
+
+<p>As shown above, you can write both documentation and test cases for models in the yml file.</p>
+<p>To run tests, use the <code>dbt test</code> command</p>
+<p><img alt="" src="https://s3-us-west-2.amazonaws.com/secure.notion-static.com/2af315b0-aeb5-47ce-a3c4-8bf7a0e2b5be/Untitled.png" /></p>
+<p>The example test above only used test cases provided by default in dbt. To see specifically what queries were used to perform the tests, you can look at the <code>target/compiled</code> directory. Let's examine how the test for the status column in schema.yml was converted to a query:</p>
+<pre class="codehilite"><code class="language-sql">with all_values as (
+    select distinct
+        status as value_field
+    from &quot;dbt&quot;.&quot;transformed&quot;.&quot;transactions&quot;
+),
+
+validation_errors as (
+    select
+        value_field
+    from all_values
+    where value_field not in (
+        'placed','shipped','completed','return_pending','returned'
+    )
+)
+
+select count(*) as validation_errors
+from validation_errors
+</code></pre>
+
+<p>The result of this query will be 0 or a value of 1 or more. If it's 0, it passes; otherwise, it fails. In this way, dbt testing can simply test columns and tables through SQL by checking whether the query result is 0 or another value, so you can cover various test cases with just basic SQL knowledge.</p>
+<h2>Conclusion</h2>
+<p>As we've seen above, dbt helps solve various problems in modern data infrastructure using only SQL. Unlike existing data processing methods that require processing in distributed systems with high costs, it delegates processing to Data Warehouse functions, creates modular reusable blocks using Jinja templates, adds documentation and test cases simply with YAML, and allows viewing metadata through web pages, reducing communication costs between organizations that manage data and those that consume it.</p>
+<p>I wanted to cover more detailed content in this article, but the article became too long just covering background explanations and basic features, so I plan to organize more advanced features and tips and learnings gained from operating in actual production environments in the next article. For example:</p>
+<ul>
+<li>Creating fast and stable SQL-based data pipelines with Airflow custom dbt operator</li>
+<li>Managing SQL coding conventions with pre-commit + sqlfluff</li>
+<li>More efficient data management of dbt codebase with custom macros and dbt packages</li>
+<li>More detailed model layer separation and easy-to-maintain dbt tips</li>
+<li>Building dbt-based Data Observability dashboards</li>
+</ul>
+<p>As mentioned above, many companies are still operating Hadoop-based data infrastructure or environments where it's difficult to apply dbt. As I habitually say, there's no silver bullet. New technologies emerge daily in the data industry, and dbt could also be just a fad.</p>
+<p>Adding my personal thoughts, I think there's a trend where many more places are building data infrastructure with ELT paradigms rather than ETL (though it's not that it can't be used in ETL at all...), and it's a technology worth considering as an alternative to Apache Spark, which had a steep learning curve but a broad user base.</p>
+    </div>
+</article>
+
+    </main>
+
+    <footer>
+        <!-- Footer content if any -->
+    </footer>
+</body>
+
+</html>
