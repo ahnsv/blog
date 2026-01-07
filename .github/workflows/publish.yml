@@ -5,25 +5,20 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Allow one concurrent deployment
 concurrency:
-  group: "pages"
+  group: "publish"
   cancel-in-progress: true
 
 jobs:
   build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch all history for proper tagging/changelog if needed
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -38,14 +33,22 @@ jobs:
     - name: Build Static Site
       run: python scripts/build.py
       
-    - name: Setup Pages
-      uses: actions/configure-pages@v5
-      
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
+    - name: Deploy to Live Branch
+      uses: JamesIves/github-pages-deploy-action@v4
       with:
-        path: '.'
+        branch: live
+        folder: _site
+        clean: true
         
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+    - name: Generate Calendar Version
+      id: calver
+      run: |
+        # Format: YYYY.MM.DD.HHMM (e.g., 2026.01.06.1430)
+        echo "version=$(date +'%Y.%m.%d.%H%M')" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.calver.outputs.version }}
+        name: Release ${{ steps.calver.outputs.version }}
+        generate_release_notes: true
