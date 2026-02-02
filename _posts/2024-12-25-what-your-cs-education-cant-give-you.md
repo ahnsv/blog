@@ -9,8 +9,8 @@ August 21st, 2024. It had been seven years since I last landed at Boston Logan A
 
 Reliving college days is mystical to the extent that I even told my wife that I feel like I'm on a time machine. A lot of things were unchanged. My school, Boston College, was as beautiful as it was, and, believe or not, people were the same. Those kids who talk ridiculously loud in the library inherited their throne to the honorable heir, and cheerful events in the first week of school, such as, Involvement Fair, Freshmen Welcoming, and stuffs, were still there as well. Besides some exceptions, it was almost the same as it was (almost) 10 years ago.
 
-![](/static/images/241213/IMG_7728.jpeg)
-![](/static/images/241213/IMG_7735.jpeg)
+![]({{ site.baseurl }}/static/images/241213/IMG_7728.jpeg)
+![]({{ site.baseurl }}/static/images/241213/IMG_7735.jpeg)
 *Arriving at Boston. August, 2024*
 
 ### Changes
@@ -24,7 +24,7 @@ There is yet another change that got me a very mixed feeling -- attitude to lear
 ### On Attitudes
 I know it sounds bad. An old(er) dude talks bad about the younger. This has been happening in history since all the way back from ancient Greece, as allegedly Socrates stated.
 
-![241213_screenshot_1.png](/static/images/241213/241213_screenshot_1.png)
+![241213_screenshot_1.png]({{ site.baseurl }}/static/images/241213/241213_screenshot_1.png)
 *Figure 1 - Socrates on young people his days*
 
 On social media, people are crying and asking each other if it is still meaningful to study computer science or programming when AI can replace them so easy. I believe, at least in computer science perspective, **the decrease in value of learning CS is nothing to be concerned about, but the loss of building a continuous learning and improvement mindset, what I call "attitude", is euthanizing CS.**
@@ -38,7 +38,7 @@ However, after years of working with those who do not have those communication s
 
 Illustrating my point:
 
-![241213_illustration_1.png](/static/images/241213/241213_illustration_1.png)
+![241213_illustration_1.png]({{ site.baseurl }}/static/images/241213/241213_illustration_1.png)
 *Figure 2.1 - Software Engineer's inner power dynamics*
 
 - Knowledge and experience naturally grow over time
@@ -50,7 +50,7 @@ I met a lot of people who unwittingly ended up their software engineering jobs (
 
 On the other hand, plethora of learning sources and cherry-pick-free environment make the ground bumpy and slanted, causing us to fall into an infinite skepticism saying that "Do we even need this?".
 
-![](/static/images/241213/241213_illustration_2.png)
+![]({{ site.baseurl }}/static/images/241213/241213_illustration_2.png)
 *Figure 2.2 - Software Engineer's inner power dynamics (with bumpy attitude)*
 
 ### Suggested Changes
@@ -66,7 +66,7 @@ Preparing for class with AI makes more sense for both faculty/instructors and st
 ### School-level LLMOps and Governance
 Some schools started to standardize AI tools usage, e.g., [Harvard's Generative AI guidelines](https://huit.harvard.edu/ai/guidelines) and [MIT's](https://ist.mit.edu/ai-guidance). Schools are even encouraging to use some gen ai tools:
 
-![](/static/images/241213/241213_screenshot_2.png)
+![]({{ site.baseurl }}/static/images/241213/241213_screenshot_2.png)
 *An email about BC's generative ai tool recommendation*
 
 Due to generative AI tools' probabilistic nature, data management is always one of main concerns. To address threats of leaking confidential data and unexpected abuse, the best approach is, for both enterprise and educational settings, to self-host the infrastructure. Within an isolated subnetwork and centralized storage to handle fairly manageable traffic, school-hosted generative AI is not a fantasy.
