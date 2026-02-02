@@ -43,7 +43,7 @@ Ultimately, I think what we need to focus on is **how to solve problems** rather
 
 > No matter what the problem is, it's always a people problem.
 - Jerry Weinberg
-> 
+>
 
 [Why do good developers care about business too?](https://evan-moon.github.io/2020/10/24/buisiness-with-programming/)
 
@@ -53,7 +53,7 @@ I think there's no right answer in code, but there are wrong answers. We find wr
 
 > A clever person solves a problem. A wise person avoids it.
 - Einstein
-> 
+>
 
 The architectures we learn and will learn focus on these problems and suggest ways to solve them more correctly from a software engineering perspective. (As everyone knows, when writing code, we often get absorbed in implementation or basic functionality implementation and miss what's actually important...)
 
