@@ -5,6 +5,21 @@
     <meta charset="UTF-8">
     <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            corePlugins: {
+                preflight: false,
+            },
+            theme: {
+                extend: {
+                    colors: {
+                        // Add custom colors here if needed
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="{{ '/static/style.css' | relative_url }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -28,7 +43,8 @@
 
 <body>
     <header>
-        <h1><a href="{{ '/' | relative_url }}" class="nav-link">{{ site.title }}</a></h1>
+        <h1 class="text-2xl font-bold text-red-500"><a href="{{ '/' | relative_url }}" class="nav-link">{{ site.title
+                }}</a></h1>
         <nav>
             <a href="{{ '/' | relative_url }}" class="nav-link">Blog</a>
             <div class="nav-divider"></div>
