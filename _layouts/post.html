@@ -3,10 +3,33 @@ layout: default
 ---
 
 <article class="post">
-    <header style="margin-bottom: 2rem;" class="post-header">
-        <h1>{{ page.title }}</h1>
-        <div class="date">{{ page.date | date: "%Y-%m-%d" }}</div>
+    <header class="post-header-centered">
+        {% if page.category %}
+        <div class="post-category">{{ page.category }}</div>
+        {% endif %}
+
+        <h1 class="post-title-main">{{ page.title }}</h1>
+
+        <div class="post-meta-centered">
+            <span class="date">{{ page.date | date: "%b %-d, %Y" }}</span>
+        </div>
+
+        {% if page.tags %}
+        <div class="post-tags-centered">
+            {% for tag in page.tags %}
+            <span class="tag">#{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
     </header>
+
+    <div class="post-hero">
+        {% if page.hero_image %}
+        <img src="{{ page.hero_image | relative_url }}" alt="{{ page.title }}" class="hero-img">
+        {% else %}
+        <img src="{{ '/static/images/default_hero.png' | relative_url }}" alt="Default Hero" class="hero-img">
+        {% endif %}
+    </div>
 
     <div class="post-content">
         {{ content }}

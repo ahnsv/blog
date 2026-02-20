@@ -154,8 +154,67 @@ blockquote {
     color: var(--fg);
 }
 
-.post-header {
-    padding: unset;
+.post-header-centered {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.post-category {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    color: var(--fg);
+}
+
+.post-title-main {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin: 0.5rem 0 1.5rem;
+    line-height: 1.1;
+}
+
+.post-meta-centered {
+    margin-bottom: 1rem;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.post-tags-centered {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.tag {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.post-hero {
+    margin-bottom: 3rem;
+    width: 100%;
+}
+
+.hero-img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 20px;
+    display: block;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 680px) {
+    .post-title-main {
+        font-size: 2.5rem;
+    }
 }

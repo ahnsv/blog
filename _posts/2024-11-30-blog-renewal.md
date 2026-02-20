@@ -3,6 +3,8 @@ title: New blog
 date: 2024-11-30
 slug: blog-renewal
 description:
+category: Announcements
+tags: [blog, news]
 ---
 Back in military service, I always kept a small notebook and a pen tucked into the pocket on my chest. Getting out of our base every morning, I patted my left chest to make sure it was there. Throughout two years of my service, I would pull out the note and jot down ideas and important notes. The habit became second nature since we are not allowed to have an electronic device in the base, but I sometimes miss those days.
 
