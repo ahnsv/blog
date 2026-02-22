@@ -3,6 +3,7 @@ title: What Your CS Education Can't Give You Anymore
 date: 2024-12-25
 slug: on-college-education
 description: Observations I made being back in college in seven years.
+hero_image: /static/images/241213/hero.jpg
 ---
 ### Landing
 August 21st, 2024. It had been seven years since I last landed at Boston Logan Airport. Leaving the US for my military duty in South Korea, I never thought this return would take this much time, especially that I would get back to Boston with so many different things, including a pretty decent work experience, huge responsibility, and my wife.

@@ -25,7 +25,11 @@ layout: default
 
     <div class="post-hero">
         {% if page.hero_image %}
-        <img src="{{ page.hero_image | relative_url }}" alt="{{ page.title }}" class="hero-img">
+            {% if page.hero_image contains "://" %}
+            <img src="{{ page.hero_image }}" alt="{{ page.title }}" class="hero-img">
+            {% else %}
+            <img src="{{ page.hero_image | relative_url }}" alt="{{ page.title }}" class="hero-img">
+            {% endif %}
         {% else %}
         <img src="{{ '/static/images/default_hero.png' | relative_url }}" alt="Default Hero" class="hero-img">
         {% endif %}
